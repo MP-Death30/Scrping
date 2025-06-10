@@ -113,25 +113,26 @@ def fetch_article(url):
         # Images de l'article
         content_div = soup.find('div', class_='entry-content')
         figures = []
+        figures = {}
         if content_div:
-            figure_tags = content_div.find_all('figure')
-            for fig in figure_tags:
-                a_tag = fig.find('a')
-                caption_tag = fig.find('figcaption')
+          figure_tags = content_div.find_all('figure')
+          for idx, fig in enumerate(figure_tags, start=1):
+              a_tag = fig.find('a')
+              caption_tag = fig.find('figcaption')
 
-                img_url = None
-                if a_tag and a_tag.has_attr('href'):
-                    href = a_tag['href']
-                    if href.startswith('http://') or href.startswith('https://'):
-                        img_url = href
+              img_url = None
+              if a_tag and a_tag.has_attr('href'):
+                  href = a_tag['href']
+                  if href.startswith('http://') or href.startswith('https://'):
+                      img_url = href
 
-                caption = caption_tag.get_text(strip=True) if caption_tag else None
+              caption = caption_tag.get_text(strip=True) if caption_tag else None
 
-                if img_url:
-                    figures.append({
-                        'image': img_url,
-                        'caption': caption
-                    })
+              if img_url:
+                  figures[f'image_{idx}'] = {
+                      'url': img_url,
+                      'caption': caption
+                  }
 
 
         # Textes
@@ -207,13 +208,13 @@ for i, article in enumerate(articles, 1):
             if author:
                 print(f"Auteur: {author}")
             if figures:
-                print("Figures:")
-                for fig in figures:
-                    print(f"  - Image: {fig.get('image')}")
-                    print(f"    Légende: {fig.get('caption')}")
+              print("Figures:")
+              for key, fig in figures.items():
+                  print(f"  - {key}:")
+                  print(f"      URL     : {fig.get('url')}")
+                  print(f"      Légende : {fig.get('caption')}")
             if texts_ordered:
                 print("Texte complet :")
                 print(texts_ordered)
         else:
             print(f"{key.capitalize()}: {value}")
- 
