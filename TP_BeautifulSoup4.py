@@ -1,5 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
+from pymongo import MongoClient
+
+
+CHAÎNE_DE_CONNEXION = "mongodb+srv://test:123@cluster0.dtgdmge.mongodb.net/Scraping"
+client = MongoClient(CHAÎNE_DE_CONNEXION)
+
+db = client.Scraping
+
+
 
 def fetch_articles(url):
     headers = {
@@ -68,7 +77,7 @@ def fetch_articles(url):
 
 
             # Finalisation
-            articles_data.append({
+            article_data = {
                 'image': img_url,
                 'tag': tag,
                 'date': date,
@@ -76,7 +85,9 @@ def fetch_articles(url):
                 'title': title,
                 'summary': summary,
                 'subtag': dans_article
-            })
+            }
+            articles_data.append(article_data)
+
 
         return articles_data
 
@@ -179,41 +190,33 @@ def extract_img_url(img_tag):
 
 
 # ======== Parcourir toutes les pages ========
-
-articles_data = []
 num_page = 1
-max_num_page = 1 # A modifier pour parcourir les autres pages
+max_num_page = 1  # À modifier selon besoin
 
 while num_page <= max_num_page:
-  url = "https://www.blogdumoderateur.com/web/page/" + str(num_page)
-  articles = fetch_articles(url)
-  print(num_page)
-  num_page += 1
+    url = f"https://www.blogdumoderateur.com/web/page/{num_page}"
+    raw_articles = fetch_articles(url)
+    
+    for article in raw_articles:
+        if not article['subtag']:
+            continue
 
-# ======== Fin ========
+        # Extraction des infos de l'article
+        subtag_data = article['subtag'][0]
 
-for i, article in enumerate(articles, 1):
-    print(f"\nArticle {i}:")
-    for key, value in article.items():
-        if key == 'subtag' and isinstance(value, list) and value and isinstance(value[0], dict):
-            subtags = value[0].get('subtag', [])
-            author = value[0].get('author', None)
-            figures = value[0].get('figures', [])
-            texts_ordered = value[0].get('texts_ordered', "")
+        formatted_article = {
+            'title': article.get('title'),
+            'author': subtag_data.get('author'),
+            'image': article.get('image'),
+            'date': article.get('date'),
+            'tag': article.get('tag'),
+            'summary': article.get('summary'),
+            'subtag': subtag_data.get('subtag'),
+            'texts_ordered': subtag_data.get('texts_ordered'),
+            'figures': subtag_data.get('figures')
+        }
 
-            print("Subtag:")
-            for tag in subtags:
-                print(f"- {tag}")
-            if author:
-                print(f"Auteur: {author}")
-            if figures:
-              print("Figures:")
-              for key, fig in figures.items():
-                  print(f"  - {key}:")
-                  print(f"      URL     : {fig.get('url')}")
-                  print(f"      Légende : {fig.get('caption')}")
-            if texts_ordered:
-                print("Texte complet :")
-                print(texts_ordered)
-        else:
-            print(f"{key.capitalize()}: {value}")
+        # Insertion dans MongoDB
+        db.articles.insert_one(formatted_article)
+
+    num_page += 1
