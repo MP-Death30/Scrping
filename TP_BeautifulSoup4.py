@@ -112,7 +112,6 @@ def fetch_article(url):
 
         # Images de l'article
         content_div = soup.find('div', class_='entry-content')
-        figures = []
         figures = {}
         if content_div:
           figure_tags = content_div.find_all('figure')
@@ -183,7 +182,7 @@ def extract_img_url(img_tag):
 
 articles_data = []
 num_page = 1
-max_num_page = 1
+max_num_page = 1 # A modifier pour parcourir les autres pages
 
 while num_page <= max_num_page:
   url = "https://www.blogdumoderateur.com/web/page/" + str(num_page)
