@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+import unicodedata
+
 
 
 CHAÎNE_DE_CONNEXION = "mongodb+srv://test:123@cluster0.dtgdmge.mongodb.net/Scraping"
@@ -61,8 +63,9 @@ def fetch_articles(url):
             article_url = a_tag['href'] if a_tag and a_tag.has_attr('href') else None
             
             # Titre
-            title = (a_tag.find('h3').get_text(strip=True)
+           title = (a_tag.find('h3').get_text(strip=True)
                      ) if a_tag and a_tag.find('h3') else None
+            title = unicodedata.normalize('NFKC', title)
 
             
             # Résumé
