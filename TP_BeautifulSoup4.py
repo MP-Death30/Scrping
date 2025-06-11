@@ -16,6 +16,7 @@ def fetch_articles(url):
     }
 
     try:
+        articles_data = []
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -188,6 +189,9 @@ def extract_img_url(img_tag):
         return url
   return None
 
+
+# ======== Supprimer les anciens articles ========
+db.articles.delete_many({})
 
 # ======== Parcourir toutes les pages ========
 num_page = 1
