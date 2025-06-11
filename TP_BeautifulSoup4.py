@@ -193,12 +193,17 @@ def extract_img_url(img_tag):
 # ======== Supprimer les anciens articles ========
 db.articles.delete_many({})
 
-# ======== Parcourir toutes les pages ========
-num_page = 1
-max_num_page = 1  # À modifier selon besoin
 
-while num_page <= max_num_page:
-    url = f"https://www.blogdumoderateur.com/web/page/{num_page}"
+# === Entrée utilisateur pour les pages ===
+try:
+    start_page = int(input("Page de départ : "))
+    max_page = int(input("Page de fin : "))
+except ValueError:
+    print("Entrée invalide. Veuillez entrer des nombres entiers.")
+    exit()
+
+while start_page <= max_page:
+    url = f"https://www.blogdumoderateur.com/web/page/{start_page}"
     raw_articles = fetch_articles(url)
     
     for article in raw_articles:
@@ -223,4 +228,6 @@ while num_page <= max_num_page:
         # Insertion dans MongoDB
         db.articles.insert_one(formatted_article)
 
-    num_page += 1
+    start_page += 1
+
+print("Le scraping est fini.")
