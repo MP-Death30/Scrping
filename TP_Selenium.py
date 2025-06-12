@@ -26,7 +26,7 @@ def parse_date(date_str):
 
 
 def get_user_inputs():
-    print("🔎 Saisie des critères de recherche :")
+    print("Saisie des critères de recherche :")
     query = input_non_empty("Spécialité (ex: généraliste) : ")
     address = input_non_empty("Code postal ou ville : ")
 
@@ -51,12 +51,24 @@ def get_user_inputs():
     max_results_str = input("Nombre max de résultats (défaut = 10) : ").strip()
     max_results = int(max_results_str) if max_results_str.isdigit() else 10
 
+
+    # Conventionnement
+    while True:
+        secteur = input("Conventionnement souhaité (secteur 1 / secteur 2 / tous) [tous] : ").strip().lower()
+        if secteur in ["secteur 1", "secteur 2", "tous", ""]:
+            if secteur == "":
+                secteur = "tous"
+            break
+        else:
+            print("Veuillez entrer 'secteur 1', 'secteur 2' ou 'tous'.")
+
     return {
         "query": query,
         "address": address,
         "start_date": start_date,
         "end_date": end_date,
-        "max_results": max_results
+        "max_results": max_results,
+        "secteur": secteur
     }
 
 
@@ -108,11 +120,26 @@ def rechercher_medecins(filters):
             name = card.find_element(By.TAG_NAME, "h2").text.strip()
             full_link = card.find_element(By.TAG_NAME, "a").get_attribute("href")
 
+            try:
+                no_dispo_text_element = card.find_element(By.XPATH, ".//*[contains(text(), 'Aucune disponibilité en ligne') or contains(text(), 'réserve la prise de rendez-vous')]")
+                if no_dispo_text_element:
+                    print(f"⛔ Médecin exclu (indisponible) : {name}")
+                    continue
+            except:
+                pass
+
+
             # Conventionnement (si présent)
             try:
                 convention = card.find_element(By.XPATH, ".//p[contains(text(), 'Conventionné')]").text.strip()
             except:
                 convention = None
+
+            secteur_filtre = filters.get("secteur", "tous").lower()
+            if secteur_filtre != "tous":
+                if not convention or secteur_filtre not in convention:
+                    print(f"⛔ Médecin exclu (conventionnement '{convention}' non conforme à '{secteur_filtre}') : {name}")
+                    continue
 
             # Visio (si icône présente)
             visio_icon = card.find_elements(By.CSS_SELECTOR, "svg[data-icon-name='solid/video']")
@@ -142,7 +169,6 @@ def extraire_infos_medecin(driver, url):
     
     result = {
         "tarifs": "NC"
-        # "disponibilites": "NC"
     }
     # ========================= ne pas toucher fonctionne ===================================
     try:
@@ -164,18 +190,6 @@ def extraire_infos_medecin(driver, url):
     
     except Exception as e:
         pass
-    # ===============================================================================================
-    
-    
-    
-    
-    # try:
-    #     dispo_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-test='next-availability'] span")
-    #     disponibilites = [el.text.strip() for el in dispo_elements if el.text.strip()]
-    #     if disponibilites:
-    #         result["disponibilites"] = "; ".join(disponibilites)
-    # except Exception as e:
-    #     pass
 
     return result
 
