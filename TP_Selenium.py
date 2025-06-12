@@ -139,32 +139,46 @@ def extraire_infos_medecin(driver, url):
     wait = WebDriverWait(driver, 10)
     driver.get(url)
     time.sleep(2)
-
-    tarifs = []
-    plages = []
-
-    try:
-        tarifs_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-test='consultation-fee']")
-        for el in tarifs_elements:
-            txt = el.text.strip()
-            if txt:
-                tarifs.append(txt)
-    except:
-        pass
-
-    try:
-        dispo_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-test='next-availability'] span")
-        for el in dispo_elements:
-            txt = el.text.strip()
-            if txt:
-                plages.append(txt)
-    except:
-        pass
-
-    return {
-        "tarifs": "; ".join(tarifs) if tarifs else "NC",
-        "disponibilites": "; ".join(plages) if plages else "NC"
+    
+    result = {
+        "tarifs": "NC"
+        # "disponibilites": "NC"
     }
+    # ========================= ne pas toucher fonctionne ===================================
+    try:
+        # Attendre que les éléments de tarifs soient présents
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.dl-profile-text.dl-profile-fee")))
+        tarifs_elements = driver.find_elements(By.CSS_SELECTOR, "div.dl-profile-text.dl-profile-fee")
+        
+        tarifs = []
+        for el in tarifs_elements:
+            try:
+                nom_tarif = el.find_element(By.CSS_SELECTOR, "span.dl-profile-fee-name").get_attribute("textContent").strip()
+                prix_tarif = el.find_element(By.CSS_SELECTOR, "span.dl-profile-fee-tag").get_attribute("textContent").strip()
+                tarifs.append(f"{nom_tarif}: {prix_tarif}")
+            except Exception as inner_e:
+                pass
+        
+        if tarifs:
+            result["tarifs"] = ", ".join(tarifs)
+    
+    except Exception as e:
+        pass
+    # ===============================================================================================
+    
+    
+    
+    
+    # try:
+    #     dispo_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-test='next-availability'] span")
+    #     disponibilites = [el.text.strip() for el in dispo_elements if el.text.strip()]
+    #     if disponibilites:
+    #         result["disponibilites"] = "; ".join(disponibilites)
+    # except Exception as e:
+    #     pass
+
+    return result
+
 
 
 def export_csv(data, filename="resultats_medecins.csv"):
@@ -175,24 +189,25 @@ def export_csv(data, filename="resultats_medecins.csv"):
         writer = csv.DictWriter(file, fieldnames=data[0].keys())
         writer.writeheader()
         writer.writerows(data)
-    print(f"✅ Données exportées dans : {filename}")
+    print(f"Données exportées dans : {filename}")
 
 
 def main():
     filters = get_user_inputs()
     medecins = rechercher_medecins(filters)
     print(f"🔍 {len(medecins)} médecins trouvés.")
-    print(medecins)
 
-    #driver = create_driver()
-    #full_data = []
+    driver = create_driver()
+    full_data = []
 
-    #for med in medecins:
-    #    print(f"🔽 Détails de {med['nom']}...")
-    #    infos = extraire_infos_medecin(driver, med["url"])
-    #    full_data.append({**med, **infos})
+    for med in medecins[:filters["max_results"]]:
+        print(f"Infos de {med['nom_complet']}...")
+        infos = extraire_infos_medecin(driver, med["lien"])
+        full_data.append({**med, **infos})
 
-    #driver.quit()
+    driver.quit()
+    print(full_data[0])
+
     #export_csv(full_data)
 
 
