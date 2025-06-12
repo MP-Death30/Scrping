@@ -51,24 +51,12 @@ def get_user_inputs():
     max_results_str = input("Nombre max de résultats (défaut = 10) : ").strip()
     max_results = int(max_results_str) if max_results_str.isdigit() else 10
 
-
-    # Conventionnement
-    while True:
-        secteur = input("Conventionnement souhaité (secteur 1 / secteur 2 / tous) [tous] : ").strip().lower()
-        if secteur in ["secteur 1", "secteur 2", "tous", ""]:
-            if secteur == "":
-                secteur = "tous"
-            break
-        else:
-            print("Veuillez entrer 'secteur 1', 'secteur 2' ou 'tous'.")
-
     return {
         "query": query,
         "address": address,
         "start_date": start_date,
         "end_date": end_date,
-        "max_results": max_results,
-        "secteur": secteur
+        "max_results": max_results
     }
 
 
@@ -110,55 +98,63 @@ def rechercher_medecins(filters):
     wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.searchbar-submit-button"))).click()
     time.sleep(2)
 
-    # Récupérer les cartes de résultats
-    cards = driver.find_elements(By.CSS_SELECTOR, "div[data-design-system-component='Card']")
     results = []
+    current_page = 1
 
-    for card in cards:
+    while len(results) < filters["max_results"]:
+        time.sleep(2)
+        cards = driver.find_elements(By.CSS_SELECTOR, "div[data-design-system-component='Card']")
+
+        for card in cards:
+            try:
+                # Nom et lien
+                name = card.find_element(By.TAG_NAME, "h2").text.strip()
+                link = card.find_element(By.TAG_NAME, "a").get_attribute("href")
+
+                # Texte de non disponibilité
+                try:
+                    card.find_element(By.XPATH, ".//*[contains(text(), 'Aucune disponibilité en ligne') or contains(text(), 'réserve la prise de rendez-vous')]")
+                    print(f"Médecin exclu (indisponible) : {name}")
+                    continue
+                except:
+                    pass
+
+                # Visio (si icône présente)
+                visio_icon = card.find_elements(By.CSS_SELECTOR, "svg[data-icon-name='solid/video']")
+                visio_available = len(visio_icon) > 0
+
+                # Ajout au tableau
+                results.append({
+                    "nom_complet": name,
+                    "lien": link,
+                    "conventionnement": "NC",  # Conventionnement non filtré
+                    "visio": visio_available
+                })
+
+                if len(results) >= filters["max_results"]:
+                    break
+
+            except Exception as e:
+                print(f"Erreur sur une carte : {e}")
+                continue
+
+        # Si résultats suffisants ou pas de bouton page suivante, on quitte
+        if len(results) >= filters["max_results"]:
+            break
+
         try:
-            # Nom et lien
-            name = card.find_element(By.TAG_NAME, "h2").text.strip()
-            full_link = card.find_element(By.TAG_NAME, "a").get_attribute("href")
-
-            try:
-                no_dispo_text_element = card.find_element(By.XPATH, ".//*[contains(text(), 'Aucune disponibilité en ligne') or contains(text(), 'réserve la prise de rendez-vous')]")
-                if no_dispo_text_element:
-                    print(f"⛔ Médecin exclu (indisponible) : {name}")
-                    continue
-            except:
-                pass
-
-
-            # Conventionnement (si présent)
-            try:
-                convention = card.find_element(By.XPATH, ".//p[contains(text(), 'Conventionné')]").text.strip()
-            except:
-                convention = None
-
-            secteur_filtre = filters.get("secteur", "tous").lower()
-            if secteur_filtre != "tous":
-                if not convention or secteur_filtre not in convention:
-                    print(f"⛔ Médecin exclu (conventionnement '{convention}' non conforme à '{secteur_filtre}') : {name}")
-                    continue
-
-            # Visio (si icône présente)
-            visio_icon = card.find_elements(By.CSS_SELECTOR, "svg[data-icon-name='solid/video']")
-            visio_available = len(visio_icon) > 0
-
-            # Ajout au tableau
-            results.append({
-                "nom_complet": name,
-                "lien": full_link,
-                "conventionnement": convention,
-                "visio": visio_available
-            })
-
-        except Exception as e:
-            print(f"Erreur sur une carte : {e}")
-            continue
+            next_button = driver.find_element(By.XPATH, "//a[.//span[contains(text(),'Page suivante')]]")
+            next_button.click()
+            time.sleep(2)
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-design-system-component='Card']")))
+            current_page += 1
+        except:
+            print("Fin des pages ou bouton 'Page suivante' non trouvé.")
+            break
 
     driver.quit()
     return results
+
 
 # ==============================================================================================================
 
@@ -200,10 +196,11 @@ def export_csv(data, filename="resultats_medecins.csv"):
         print("Aucune donnée à exporter.")
         return
     with open(filename, mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=data[0].keys())
+        writer = csv.DictWriter(file, fieldnames=data[0].keys(), delimiter=';')
         writer.writeheader()
         writer.writerows(data)
     print(f"Données exportées dans : {filename}")
+
 
 
 def main():
@@ -220,9 +217,12 @@ def main():
         full_data.append({**med, **infos})
 
     driver.quit()
-    print(full_data[0])
 
-    #export_csv(full_data)
+    if full_data:
+        export_csv(full_data)
+        print(full_data[0])
+    else:
+        print("Aucune donnée à exporter.")
 
 
 if __name__ == "__main__":
