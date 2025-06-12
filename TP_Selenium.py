@@ -195,7 +195,7 @@ def export_csv(data, filename="resultats_medecins.csv"):
 def main():
     filters = get_user_inputs()
     medecins = rechercher_medecins(filters)
-    print(f"🔍 {len(medecins)} médecins trouvés.")
+    print(f"{len(medecins)} médecins trouvés.")
 
     driver = create_driver()
     full_data = []
