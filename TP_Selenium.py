@@ -67,7 +67,7 @@ def create_driver():
     options.add_argument("--disable-dev-shm-usage")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-# ========================= ne pas toucher fonctionne ===================================
+# ============================================================
 def rechercher_medecins(filters):
     driver = create_driver()
     wait = WebDriverWait(driver, 15)
@@ -156,7 +156,7 @@ def rechercher_medecins(filters):
     return results
 
 
-# ==============================================================================================================
+# ========================================== ne pas toucher fonctionne ====================================================================
 
 def extraire_infos_medecin(driver, url):
     wait = WebDriverWait(driver, 10)
@@ -166,7 +166,6 @@ def extraire_infos_medecin(driver, url):
     result = {
         "tarifs": "NC"
     }
-    # ========================= ne pas toucher fonctionne ===================================
     try:
         # Attendre que les éléments de tarifs soient présents
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.dl-profile-text.dl-profile-fee")))
